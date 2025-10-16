@@ -32,13 +32,7 @@ export default function PaywallModal({
             className="w-full py-3 bg-gradient-to-r from-primary via-purple-600 to-pink-600 text-white rounded-lg hover:opacity-90 transition-all font-medium flex items-center justify-center gap-2"
           >
             <Zap className="w-5 h-5" />
-            Upgrade Now - $9.99/month
-          </button>
-          <button
-            onClick={onClose}
-            className="w-full py-2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Maybe later
+            Upgrade Now - $17/month
           </button>
         </div>
       </div>

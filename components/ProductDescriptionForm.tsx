@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sparkles, Lock } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 import FormInput from './form/FormInput';
 import FormTextarea from './form/FormTextarea';
 import PaywallModal from './subscription/PaywallModal';
@@ -30,6 +31,7 @@ export default function ProductDescriptionForm({
   generatedDescription,
 }: ProductDescriptionFormProps) {
   const { isSignedIn, user } = useUser();
+  const router = useRouter();
   const [formData, setFormData] = useState<ProductFormData>({
     productName: '',
     productCategory: '',
@@ -115,9 +117,7 @@ export default function ProductDescriptionForm({
   };
 
   const handleUpgrade = () => {
-    // Open Clerk's user profile with billing tab
-    // You can configure this in Clerk Dashboard under "User Profile"
-    window.open('/user-profile#billing', '_blank');
+    router.push('/pricing');
   };
 
   const isFormValid = formData.productName.trim() && formData.keyFeatures.trim() && isSignedIn;

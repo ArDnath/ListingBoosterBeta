@@ -1,8 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Lock, Zap } from 'lucide-react';
+import { Sparkles, Lock } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
+import FormInput from './form/FormInput';
+import FormTextarea from './form/FormTextarea';
+import PaywallModal from './subscription/PaywallModal';
+import UsageBadge from './subscription/UsageBadge';
+import GeneratedDescriptionDisplay from './description/GeneratedDescriptionDisplay';
+import LoadingIndicator from './shared/LoadingIndicator';
 
 interface ProductDescriptionFormProps {
   onGenerateDescription: (data: ProductFormData) => void;
@@ -127,13 +133,11 @@ export default function ProductDescriptionForm({
             Product Details
           </h3>
           {isSignedIn && (
-            <div className="text-xs text-muted-foreground">
-              {isSubscribed ? (
-                <span className="px-2 py-1 bg-primary/10 text-primary rounded-full font-medium">Pro</span>
-              ) : (
-                <span>{generationsUsed}/{MAX_FREE_GENERATIONS} free generations</span>
-              )}
-            </div>
+            <UsageBadge 
+              isSubscribed={isSubscribed}
+              generationsUsed={generationsUsed}
+              maxGenerations={MAX_FREE_GENERATIONS}
+            />
           )}
         </div>
         <p className="text-sm text-muted-foreground">
@@ -142,126 +146,58 @@ export default function ProductDescriptionForm({
       </div>
 
       {/* Paywall Modal */}
-      {showPaywall && (
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm rounded-2xl flex items-center justify-center z-20">
-          <div className="bg-card border-2 border-primary rounded-xl p-8 max-w-md text-center shadow-2xl">
-            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Lock className="w-8 h-8 text-primary" />
-            </div>
-            <h3 className="text-2xl font-bold mb-2">Upgrade to Continue</h3>
-            <p className="text-muted-foreground mb-6">
-              You've used all {MAX_FREE_GENERATIONS} free generations. Subscribe to unlock unlimited AI-powered descriptions!
-            </p>
-            <div className="space-y-3">
-              <button 
-                onClick={handleUpgrade}
-                className="w-full py-3 bg-gradient-to-r from-primary via-purple-600 to-pink-600 text-white rounded-lg hover:opacity-90 transition-all font-medium flex items-center justify-center gap-2"
-              >
-                <Zap className="w-5 h-5" />
-                Upgrade Now - $9.99/month
-              </button>
-              <button
-                onClick={() => setShowPaywall(false)}
-                className="w-full py-2 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Maybe later
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <PaywallModal
+        isOpen={showPaywall}
+        onClose={() => setShowPaywall(false)}
+        onUpgrade={handleUpgrade}
+        maxGenerations={MAX_FREE_GENERATIONS}
+      />
 
       {/* Form */}
       <div className="flex-1 overflow-y-auto space-y-4 mb-4">
-        {/* Product Name */}
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-2">
-            Product Name <span className="text-destructive">*</span>
-          </label>
-          <input
-            type="text"
-            value={formData.productName}
-            onChange={(e) => handleInputChange('productName', e.target.value)}
-            placeholder="e.g., Wireless Bluetooth Headphones"
-            className="w-full px-4 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
-          />
-        </div>
+        <FormInput
+          label="Product Name"
+          value={formData.productName}
+          onChange={(value) => handleInputChange('productName', value)}
+          placeholder="e.g., Wireless Bluetooth Headphones"
+          required
+        />
 
-        {/* Product Category */}
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-2">
-            Category
-          </label>
-          <input
-            type="text"
-            value={formData.productCategory}
-            onChange={(e) => handleInputChange('productCategory', e.target.value)}
-            placeholder="e.g., Electronics, Audio"
-            className="w-full px-4 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
-          />
-        </div>
+        <FormInput
+          label="Category"
+          value={formData.productCategory}
+          onChange={(value) => handleInputChange('productCategory', value)}
+          placeholder="e.g., Electronics, Audio"
+        />
 
-        {/* Key Features */}
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-2">
-            Key Features <span className="text-destructive">*</span>
-          </label>
-          <textarea
-            value={formData.keyFeatures}
-            onChange={(e) => handleInputChange('keyFeatures', e.target.value)}
-            placeholder="e.g., Noise cancellation, 30-hour battery, comfortable fit"
-            rows={3}
-            className="w-full px-4 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground resize-none"
-          />
-        </div>
+        <FormTextarea
+          label="Key Features"
+          value={formData.keyFeatures}
+          onChange={(value) => handleInputChange('keyFeatures', value)}
+          placeholder="e.g., Noise cancellation, 30-hour battery, comfortable fit"
+          rows={3}
+          required
+        />
 
-        {/* Target Audience */}
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-2">
-            Target Audience
-          </label>
-          <input
-            type="text"
-            value={formData.targetAudience}
-            onChange={(e) => handleInputChange('targetAudience', e.target.value)}
-            placeholder="e.g., Music lovers, commuters, gamers"
-            className="w-full px-4 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
-          />
-        </div>
+        <FormInput
+          label="Target Audience"
+          value={formData.targetAudience}
+          onChange={(value) => handleInputChange('targetAudience', value)}
+          placeholder="e.g., Music lovers, commuters, gamers"
+        />
 
-        {/* Unique Selling Points */}
-        <div>
-          <label className="block text-sm font-medium text-foreground mb-2">
-            What Makes It Special?
-          </label>
-          <textarea
-            value={formData.uniqueSellingPoints}
-            onChange={(e) => handleInputChange('uniqueSellingPoints', e.target.value)}
-            placeholder="e.g., Premium sound quality at affordable price"
-            rows={2}
-            className="w-full px-4 py-2 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground resize-none"
-          />
-        </div>
+        <FormTextarea
+          label="What Makes It Special?"
+          value={formData.uniqueSellingPoints}
+          onChange={(value) => handleInputChange('uniqueSellingPoints', value)}
+          placeholder="e.g., Premium sound quality at affordable price"
+          rows={2}
+        />
       </div>
 
       {/* Generated Description */}
       {generatedDescription && (
-        <div className="mb-4 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <h4 className="text-sm font-semibold text-foreground">SEO-Optimized Description</h4>
-          </div>
-          <p className="text-sm text-foreground whitespace-pre-wrap">{generatedDescription}</p>
-          <button
-            onClick={() => {
-              navigator.clipboard.writeText(generatedDescription);
-              alert('Description copied to clipboard!');
-            }}
-            className="mt-3 text-xs text-primary hover:underline"
-          >
-            Copy to clipboard
-          </button>
-        </div>
+        <GeneratedDescriptionDisplay description={generatedDescription} />
       )}
 
       {/* Generate Button */}
@@ -279,11 +215,7 @@ export default function ProductDescriptionForm({
           </>
         ) : isGenerating ? (
           <>
-            <div className="flex gap-1">
-              <div className="w-2 h-2 bg-white rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-              <div className="w-2 h-2 bg-white rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-              <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
-            </div>
+            <LoadingIndicator />
             Generating...
           </>
         ) : !isSubscribed && generationsUsed >= MAX_FREE_GENERATIONS ? (

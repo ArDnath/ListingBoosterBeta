@@ -22,10 +22,15 @@ export default function PaywallModal({
         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
           <Lock className="w-8 h-8 text-primary" />
         </div>
-        <h3 className="text-2xl font-bold mb-2">Upgrade to Continue</h3>
-        <p className="text-muted-foreground mb-6">
-          You've used all {maxGenerations} free generations. Subscribe to unlock unlimited AI-powered descriptions!
-        </p>
+        <h3 className="text-2xl font-bold mb-2">Free Limit Reached</h3>
+        <div className="space-y-4 mb-6">
+          <p className="text-muted-foreground">
+            You've used all {maxGenerations} free background removals. 
+          </p>
+          <p className="font-medium text-foreground">
+            Subscribe to unlock unlimited background removal and other premium features!
+          </p>
+        </div>
         <div className="space-y-3">
           <button 
             onClick={onUpgrade}

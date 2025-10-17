@@ -24,11 +24,24 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    console.log('Sending request to remove.bg API...');
+    
     // Create form data for remove.bg API
     const removeBgFormData = new FormData();
     const blob = new Blob([buffer], { type: file.type });
-    removeBgFormData.append('image_file', blob, file.name);
+    
+    // Ensure we're using the correct field name and file name
+    const fileName = file.name || 'image.png';
+    removeBgFormData.append('image_file', blob, fileName);
     removeBgFormData.append('size', 'auto');
+
+    // Add debug logging
+    console.log('File info:', {
+      fileName,
+      fileType: file.type,
+      fileSize: file.size,
+      bufferSize: buffer.byteLength
+    });
 
     // Call remove.bg API
     const response = await fetch('https://api.remove.bg/v1.0/removebg', {
@@ -36,13 +49,23 @@ export async function POST(request: NextRequest) {
       headers: {
         'X-Api-Key': apiKey,
       },
-      body: removeBgFormData,
+      body: removeBgFormData as any, // Type assertion to bypass TypeScript error
     });
+    
+    console.log('Remove.bg API response status:', response.status);
 
     if (!response.ok) {
-      const errorData = await response.json();
+      let errorMessage = 'Background removal failed';
+      try {
+        const errorData = await response.text();
+        console.error('Remove.bg API error:', errorData);
+        const jsonError = JSON.parse(errorData);
+        errorMessage = jsonError.errors?.[0]?.title || errorData;
+      } catch (e) {
+        console.error('Error parsing error response:', e);
+      }
       return NextResponse.json(
-        { error: errorData.errors?.[0]?.title || 'Background removal failed' },
+        { error: errorMessage },
         { status: response.status }
       );
     }
@@ -51,6 +74,8 @@ export async function POST(request: NextRequest) {
     const imageBuffer = await response.arrayBuffer();
     const base64Image = Buffer.from(imageBuffer).toString('base64');
     const imageUrl = `data:image/png;base64,${base64Image}`;
+    
+    console.log('Successfully processed image. Image size:', base64Image.length, 'bytes');
 
     return NextResponse.json({
       success: true,

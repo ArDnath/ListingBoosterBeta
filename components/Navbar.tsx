@@ -4,7 +4,13 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { IconMenu2, IconX } from "@tabler/icons-react";
-
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  SignUpButton,
+  UserButton,
+} from "@clerk/nextjs";
 export default function Navbar() {
   const [visible, setVisible] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -31,7 +37,7 @@ export default function Navbar() {
     >
       <motion.div
         animate={{
-          backdropFilter: visible ? "blur(10px)" : "none",
+          backdropFilter: visible ? "blur(8px)" : "none",
           boxShadow: visible
             ? "0 0 24px rgba(34,42,53,0.06), 0 1px 1px rgba(0,0,0,0.05), 0 0 0 1px rgba(34,42,53,0.04), 0 0 4px rgba(34,42,53,0.08), 0 16px 68px rgba(47,48,55,0.05), 0 1px 0 rgba(255,255,255,0.1) inset"
             : "none",
@@ -76,18 +82,28 @@ export default function Navbar() {
 
         {/* Desktop Buttons */}
         <div className="hidden lg:flex gap-3">
-          <Link
-            href="/sign-in"
-            className="px-4 py-2 rounded-md bg-transparent dark:text-white text-black text-sm font-bold cursor-pointer transition duration-200"
-          >
-            Sign In
-          </Link>
-          <Link
-            href="/sign-up"
-            className="px-4 py-2 rounded-md bg-white text-black text-sm font-bold shadow-[0_0_24px_rgba(34,_42,_53,_0.06),_0_1px_1px_rgba(0,_0,_0,_0.05),_0_0_0_1px_rgba(34,_42,_53,_0.04),_0_0_4px_rgba(34,_42,_53,_0.08),_0_16px_68px_rgba(47,_48,_55,_0.05),_0_1px_0_rgba(255,_255,_255,_0.1)_inset] transition duration-200 hover:-translate-y-0.5"
-          >
-            Get Started
-          </Link>
+        <SignedOut>
+              <SignInButton mode="modal">
+                <button className="px-4 py-2 rounded-md bg-transparent text-white text-sm font-bold cursor-pointer transition duration-200">
+                  Sign In
+                </button>
+              </SignInButton>
+              <SignUpButton mode="modal">
+                <button className="px-4 py-2 rounded-md bg-white text-black text-sm font-bold shadow-[0_0_24px_rgba(34,_42,_53,_0.06),_0_1px_1px_rgba(0,_0,_0,_0.05),_0_0_0_1px_rgba(34,_42,_53,_0.04),_0_0_4px_rgba(34,_42,_53,_0.08),_0_16px_68px_rgba(47,_48,_55,_0.05),_0_1px_0_rgba(255,_255,_255,_0.1)_inset] transition duration-200 hover:-translate-y-0.5">
+                  Get Started
+                </button>
+              </SignUpButton>
+            </SignedOut>
+            <SignedIn>
+              <UserButton 
+                afterSignOutUrl="/"
+                appearance={{
+                  elements: {
+                    userButtonAvatarBox: "w-8 h-8",
+                  }
+                }}
+              />
+            </SignedIn>
         </div>
 
         {/* Mobile Menu Toggle */}

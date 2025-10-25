@@ -1,7 +1,6 @@
 'use client';
 
 import React from 'react';
-import { Check, Sparkles, Zap } from 'lucide-react';
 import { useUser } from '@clerk/nextjs';
 import { PricingTable } from '@clerk/nextjs';
 

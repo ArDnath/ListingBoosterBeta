@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
 import { IconMenu2, IconX } from "@tabler/icons-react";
 import {
@@ -56,11 +57,12 @@ export default function Navbar() {
       >
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2">
-          <img
+          <Image
             src="https://assets.aceternity.com/logo-dark.png"
             alt="logo"
             width={30}
             height={30}
+            priority
           />
           <span className="font-medium text-black dark:text-white">
             ListingBooster
@@ -84,12 +86,12 @@ export default function Navbar() {
         <div className="hidden lg:flex gap-3">
         <SignedOut>
               <SignInButton mode="modal">
-                <button className="px-4 py-2 rounded-md bg-transparent text-white text-sm font-bold cursor-pointer transition duration-200">
+                <button className="px-4 py-2 rounded-md bg-transparent text-neutral-700 dark:text-white border border-neutral-300 dark:border-neutral-700 text-sm font-bold cursor-pointer transition duration-200 hover:bg-neutral-100 dark:hover:bg-neutral-800">
                   Sign In
                 </button>
               </SignInButton>
               <SignUpButton mode="modal">
-                <button className="px-4 py-2 rounded-md bg-white text-black text-sm font-bold shadow-[0_0_24px_rgba(34,_42,_53,_0.06),_0_1px_1px_rgba(0,_0,_0,_0.05),_0_0_0_1px_rgba(34,_42,_53,_0.04),_0_0_4px_rgba(34,_42,_53,_0.08),_0_16px_68px_rgba(47,_48,_55,_0.05),_0_1px_0_rgba(255,_255,_255,_0.1)_inset] transition duration-200 hover:-translate-y-0.5">
+                <button className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-bold shadow-[0_0_24px_rgba(34,_42,_53,_0.06),_0_1px_1px_rgba(0,_0,_0,_0.05),_0_0_0_1px_rgba(34,_42,_53,_0.04),_0_0_4px_rgba(34,_42,_53,_0.08),_0_16px_68px_rgba(47,_48,_55,_0.05),_0_1px_0_rgba(255,_255,_255,_0.1)_inset] transition duration-200 hover:-translate-y-0.5 hover:bg-blue-700">
                   Get Started
                 </button>
               </SignUpButton>

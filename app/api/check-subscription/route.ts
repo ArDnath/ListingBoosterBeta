@@ -1,9 +1,12 @@
+// app/api/check-subscription/route.ts
 import { NextResponse } from 'next/server';
-import { auth, currentUser } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
+import  prisma  from '@/lib/prisma';
+import { checkSubscription } from '@/lib/subscription';
 
 export async function GET() {
   try {
-    const { userId } = await auth();
+  const { userId } = await auth();
     
     if (!userId) {
       return NextResponse.json({ 
@@ -12,26 +15,18 @@ export async function GET() {
       });
     }
 
-    const user = await currentUser();
-    
-    if (!user) {
-      return NextResponse.json({ 
-        isSubscribed: false,
-        generationsUsed: 0 
-      });
-    }
+    // Check subscription status
+    const subscription = await checkSubscription(userId);
 
-    // Check subscription from Clerk public metadata (set via Clerk Dashboard)
-    // You can set this manually or via Clerk's subscription features
-    const isSubscribed = user.publicMetadata?.subscribed === true || 
-                        user.publicMetadata?.plan === 'pro';
-    
-    const generationsUsed = (user.privateMetadata?.generationsUsed as number) || 0;
+    // Get usage stats
+    const usage = await prisma.usageRecord.count({
+      where: { userId, action: 'GENERATE_DESCRIPTION' }
+    });
 
     return NextResponse.json({
-      isSubscribed,
-      generationsUsed,
-      plan: user.publicMetadata?.plan || 'free',
+      isSubscribed: subscription.hasAccess,
+      generationsUsed: usage,
+      plan: subscription.planName || 'free',
     });
   } catch (error) {
     console.error('Error checking subscription:', error);

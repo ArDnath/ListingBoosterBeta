@@ -35,6 +35,9 @@ model User {
   
   // Credits for processing
   credits Credit[]
+  
+  // Subscription credits
+  subscriptionCredits SubscriptionCredit[]
 
   @@map("users")
 }
@@ -56,8 +59,10 @@ model UserSubscription {
   updatedAt          DateTime              @updatedAt
   
   // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan SubscriptionPlan @relation(fields: [planId], references: [id])
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan      SubscriptionPlan   @relation(fields: [planId], references: [id])
+  credits   Credit[]           @relation("SubscriptionCredits")
+  periods   SubscriptionCredit[]
 
   @@map("user_subscriptions")
 }
@@ -137,36 +142,70 @@ model Image {
 
 // Credit system for users
 model Credit {
-  id          String      @id @default(cuid())
-  userId      String
-  amount      Int         // positive for credit, negative for debit
-  type        CreditType
-  description String?
+  id            String    @id @default(cuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount        Int       @default(0)  // Total credits available
+  used          Int       @default(0)  // Credits used
+  type          CreditType
+  description   String?
+  expiresAt     DateTime? // When these credits expire (for trials or time-limited credits)
+  isActive      Boolean   @default(true)
   
   // Link to subscription or purchase
+  subscription  UserSubscription? @relation("SubscriptionCredits", fields: [subscriptionId], references: [id])
   subscriptionId String?
-  processId      String?
+  processId     String?
   
-  createdAt   DateTime    @default(now())
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  // Usage records for these credits
+  usageRecords  UsageRecord[]
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([subscriptionId])
+  
   @@map("credits")
 }
 
-// Usage tracking for analytics
+// Tracks subscription credits for each billing period
+model SubscriptionCredit {
+  id              String           @id @default(cuid())
+  userId          String
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptionId  String
+  subscription    UserSubscription @relation(fields: [subscriptionId], references: [id])
+  periodStart     DateTime
+  periodEnd       DateTime
+  totalCredits    Int
+  usedCredits     Int              @default(0)
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  
+  @@index([userId, subscriptionId])
+  @@index([periodEnd])
+  
+  @@map("subscription_credits")
+}
+
+// Tracks usage of credits
 model UsageRecord {
   id           String   @id @default(cuid())
   userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   action       String   // "background_removal", "description_generation", etc.
-  creditsUsed  Int      @default(0)
-  metadata     Json?    // Additional usage data
+  creditsUsed  Int      @default(1)
+  isTrial      Boolean  @default(false)
+  creditId     String?  // Reference to the credit that was used
+  metadata     Json?    // Additional metadata about the usage
   createdAt    DateTime @default(now())
 
   // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
+  credit Credit? @relation(fields: [creditId], references: [id])
+  
   @@map("usage_records")
 }
 
@@ -208,6 +247,7 @@ enum ProcessingType {
 }
 
 enum CreditType {
+  TRIAL
   SUBSCRIPTION_GRANT
   PURCHASE
   BONUS

@@ -10,7 +10,7 @@ export default function PricingPage() {
             Choose Your Plan
           </h1>
           <p className="text-lg text-muted-foreground">
-            Start free and upgrade when you're ready to scale
+            Start free and upgrade when you&apos;re ready to scale
           </p>
         </div>
         <PricingTable />

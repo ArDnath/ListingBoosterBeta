@@ -12,6 +12,18 @@ import {
   SignUpButton,
   UserButton,
 } from "@clerk/nextjs";
+
+// Helper component for Mobile Menu Items
+const MobileNavItem = ({ href, name, onClick }: { href: string; name: string; onClick: () => void }) => (
+  <Link
+    href={href}
+    onClick={onClick}
+    className="block w-full text-neutral-600 dark:text-neutral-300 py-2 transition duration-200 hover:text-neutral-900 dark:hover:text-white"
+  >
+    {name}
+  </Link>
+);
+
 export default function Navbar() {
   const [visible, setVisible] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -28,6 +40,9 @@ export default function Navbar() {
     { name: "Pricing", href: "/pricing" },
     { name: "Contact", href: "/contact" },
   ];
+
+  const toggleMenu = () => setMenuOpen(!menuOpen);
+  const closeMenu = () => setMenuOpen(false);
 
   return (
     <motion.nav
@@ -84,7 +99,7 @@ export default function Navbar() {
 
         {/* Desktop Buttons */}
         <div className="hidden lg:flex gap-3">
-        <SignedOut>
+            <SignedOut>
               <SignInButton mode="modal">
                 <button className="px-4 py-2 rounded-md bg-transparent text-neutral-700 dark:text-white border border-neutral-300 dark:border-neutral-700 text-sm font-bold cursor-pointer transition duration-200 hover:bg-neutral-100 dark:hover:bg-neutral-800">
                   Sign In
@@ -112,12 +127,12 @@ export default function Navbar() {
         <div className="lg:hidden flex items-center">
           {menuOpen ? (
             <IconX
-              onClick={() => setMenuOpen(false)}
+              onClick={toggleMenu}
               className="text-black dark:text-white cursor-pointer"
             />
           ) : (
             <IconMenu2
-              onClick={() => setMenuOpen(true)}
+              onClick={toggleMenu}
               className="text-black dark:text-white cursor-pointer"
             />
           )}
@@ -130,32 +145,55 @@ export default function Navbar() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
-          className="absolute top-16 left-0 w-full flex flex-col items-start justify-start gap-4 bg-white dark:bg-neutral-950 px-6 py-6 rounded-lg shadow-[0_0_24px_rgba(34,_42,_53,_0.06),_0_1px_1px_rgba(0,_0,_0,_0.05),_0_0_0_1px_rgba(34,_42,_53,_0.04),_0_0_4px_rgba(34,_42,_53,_0.08),_0_16px_68px_rgba(47,_48,_55,_0.05),_0_1px_0_rgba(255,_255,_255,_0.1)_inset]"
+          className="absolute top-16 left-1/2 -translate-x-1/2 w-[90%] sm:w-[500px] flex flex-col items-start justify-start gap-4 bg-white dark:bg-neutral-950 px-6 py-6 rounded-xl shadow-2xl border border-neutral-200 dark:border-neutral-800"
         >
           {navItems.map((item, idx) => (
-            <Link
+            <MobileNavItem
               key={idx}
               href={item.href}
-              onClick={() => setMenuOpen(false)}
-              className="block w-full text-neutral-600 dark:text-neutral-300 py-2"
-            >
-              {item.name}
-            </Link>
+              name={item.name}
+              onClick={closeMenu}
+            />
           ))}
-          <Link
-            href="/sign-in"
-            onClick={() => setMenuOpen(false)}
-            className="px-4 py-2 w-full rounded-md text-center bg-transparent dark:text-white text-black text-sm font-bold"
-          >
-            Sign In
-          </Link>
-          <Link
-            href="/sign-up"
-            onClick={() => setMenuOpen(false)}
-            className="px-4 py-2 w-full rounded-md bg-white text-black text-center text-sm font-bold shadow-[0_0_24px_rgba(34,_42,_53,_0.06),_0_1px_1px_rgba(0,_0,_0,_0.05),_0_0_0_1px_rgba(34,_42,_53,_0.04),_0_0_4px_rgba(34,_42,_53,_0.08),_0_16px_68px_rgba(47,_48,_55,_0.05),_0_1px_0_rgba(255,_255,_255,_0.1)_inset]"
-          >
-            Get Started
-          </Link>
+          
+          <div className="w-full h-px bg-neutral-200 dark:bg-neutral-800 my-2" />
+
+          {/* FIX: Use Clerk components for mobile authentication */}
+          <SignedOut>
+            <SignInButton mode="modal">
+              <button 
+                onClick={closeMenu}
+                className="px-4 py-2 w-full rounded-md text-center bg-transparent text-neutral-700 dark:text-white border border-neutral-300 dark:border-neutral-700 text-sm font-bold cursor-pointer transition duration-200 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+              >
+                Sign In
+              </button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button 
+                onClick={closeMenu}
+                className="px-4 py-2 w-full rounded-md bg-gray-800 text-white text-center text-sm font-bold shadow-lg transition duration-200 hover:bg-blue-700"
+              >
+                Get Started
+              </button>
+            </SignUpButton>
+          </SignedOut>
+
+          {/* FIX: Add UserButton for signed-in mobile state */}
+          <SignedIn>
+            <div className="flex items-center justify-between w-full">
+                <span className="text-sm font-medium text-neutral-700 dark:text-neutral-300">
+                    My Account
+                </span>
+                <UserButton 
+                    afterSignOutUrl="/"
+                    appearance={{
+                        elements: {
+                            userButtonAvatarBox: "w-8 h-8",
+                        }
+                    }}
+                />
+            </div>
+          </SignedIn>
         </motion.div>
       )}
     </motion.nav>

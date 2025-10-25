@@ -91,7 +91,7 @@ export default function Navbar() {
                 </button>
               </SignInButton>
               <SignUpButton mode="modal">
-                <button className="px-4 py-2 rounded-md bg-blue-600 text-white text-sm font-bold shadow-[0_0_24px_rgba(34,_42,_53,_0.06),_0_1px_1px_rgba(0,_0,_0,_0.05),_0_0_0_1px_rgba(34,_42,_53,_0.04),_0_0_4px_rgba(34,_42,_53,_0.08),_0_16px_68px_rgba(47,_48,_55,_0.05),_0_1px_0_rgba(255,_255,_255,_0.1)_inset] transition duration-200 hover:-translate-y-0.5 hover:bg-blue-700">
+                <button className="px-4 py-2 rounded-md bg-gray-800 text-white text-sm font-bold shadow-[0_0_24px_rgba(34,_42,_53,_0.06),_0_1px_1px_rgba(0,_0,_0,_0.05),_0_0_0_1px_rgba(34,_42,_53,_0.04),_0_0_4px_rgba(34,_42,_53,_0.08),_0_16px_68px_rgba(47,_48,_55,_0.05),_0_1px_0_rgba(255,_255,_255,_0.1)_inset] transition duration-200 hover:-translate-y-0.5 hover:bg-blue-700">
                   Get Started
                 </button>
               </SignUpButton>

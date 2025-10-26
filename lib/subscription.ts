@@ -1,7 +1,9 @@
 import { auth, currentUser } from '@clerk/nextjs/server';
+import { Prisma } from '@prisma/client';
 import prisma from './prisma';
 
-type SubscriptionDetails = {
+// --- Subscription Details Type ---
+export interface SubscriptionDetails {
   hasAccess: boolean;
   remainingCredits: number;
   totalCredits: number;
@@ -9,56 +11,70 @@ type SubscriptionDetails = {
   isTrial: boolean;
   isValid: boolean;
   expiresAt?: Date;
-};
+}
 
-type CreditType = 'TRIAL' | 'SUBSCRIPTION_GRANT' | 'PURCHASE' | 'BONUS' | 'USAGE' | 'REFUND';
+// --- Credit Type Enum as Union ---
+export type CreditType =
+  | 'TRIAL'
+  | 'SUBSCRIPTION_GRANT'
+  | 'PURCHASE'
+  | 'BONUS'
+  | 'USAGE'
+  | 'REFUND';
 
-interface Credit {
+// --- Credit Interface ---
+export interface Credit {
   id: string;
   userId: string;
-  amount: number;
-  used: number;
-  type: CreditType;
-  description: string | null;
-  expiresAt: Date | null;
-  isActive: boolean;
-  subscriptionId: string | null;
-  processId: string | null;
+  amount: number;               // Total credits granted by this entry
+  used: number;                 // Credits used from this entry
+  type: CreditType;             // How credits were granted/purposed
+  description?: string | null;  // Optional description or note
+  expiresAt?: Date | null;      // Expiry date (null means "never expires")
+  isActive: boolean;            // Whether the credit entry is currently valid
+  subscriptionId?: string | null; // Link to subscription if applicable
+  processId?: string | null;      // External reference (bonus, payment processor, etc)
   createdAt: Date;
   updatedAt: Date;
 }
 
-interface UsageStats {
-  totalCreditsUsed: number;
-  totalGenerations: number;
+// --- Usage Stats Type ---
+export interface UsageStats {
+  totalCreditsUsed: number; // All credits used by the user
+  totalGenerations: number; // All credit-consuming actions
   subscription: {
     planName: string;
     status: string;
     periodEnd?: Date;
     creditsIncluded: number;
-  } | null;
+  } | null;                 // Current subscription (null if none)
   credits: {
     total: number;
     used: number;
     remaining: number;
-  };
+  };                        // Summary across all credits
 }
 
+
+// --- Logic Functions ---
+
+// Check a user's subscription and credit status
 export async function checkSubscription(userId: string): Promise<SubscriptionDetails> {
   try {
-    // Get user's active subscription
+    const now = new Date();
+
+    // Find an active subscription
     const subscription = await prisma.userSubscription.findFirst({
       where: { 
         userId,
         status: 'ACTIVE',
-        currentPeriodEnd: { gte: new Date() }
+        currentPeriodEnd: { gte: now }
       },
       include: { plan: true }
     });
 
-    // Get user's active credits (not expired and not used up)
-    const now = new Date();
-    const credits = await prisma.credit.findMany({
+    // Find all active, not expired credits
+    const credits: Credit[] = await prisma.credit.findMany({
       where: {
         userId,
         isActive: true,
@@ -68,41 +84,42 @@ export async function checkSubscription(userId: string): Promise<SubscriptionDet
         ]
       },
       orderBy: [
-        // Prioritize credits that expire soonest and then trial credits
         { expiresAt: 'asc' }, 
         { type: 'asc' }
       ]
     });
 
-    // Calculate total and remaining credits across ALL active credit entries
-    const totalCredits = credits.reduce((sum: number, credit: Credit) => sum + credit.amount, 0);
-    const remainingCredits = credits.reduce((sum: number, credit: Credit) => sum + (credit.amount - credit.used), 0);
-    const hasTrialCredits = credits.some((credit: Credit) => credit.type === 'TRIAL' && (credit.amount - credit.used) > 0);
+    // Credit calculations
+    const totalCredits = credits.reduce((sum, credit) => sum + credit.amount, 0);
+    const remainingCredits = credits.reduce((sum, credit) => sum + Math.max(credit.amount - credit.used, 0), 0);
+    const hasTrialCredits = credits.some(
+      (credit) => credit.type === 'TRIAL' && (credit.amount - credit.used) > 0
+    );
 
     if (subscription) {
       return {
         hasAccess: true,
-        // The remainingCredits and totalCredits should reflect the sum of ALL credits the user has, 
-        // including those from the subscription, purchases, and any remaining trial/bonus.
         remainingCredits,
-        totalCredits, // Use the calculated total, not just the plan's base credits
+        totalCredits,
         planName: subscription.plan.displayName,
         isTrial: false,
         isValid: true,
-        expiresAt: subscription.currentPeriodEnd || undefined
+        expiresAt: subscription.currentPeriodEnd || undefined,
       };
     }
 
     if (hasTrialCredits) {
-      const trialCredit = credits.find((c: Credit) => c.type === 'TRIAL' && (c.amount - c.used) > 0);
+      const trialCredit = credits.find(
+        (c) => c.type === 'TRIAL' && (c.amount - c.used) > 0
+      );
       return {
         hasAccess: true,
         remainingCredits,
-        totalCredits: trialCredit?.amount || 0, // Only show trial amount as total if no subscription
+        totalCredits: trialCredit?.amount || 0,
         planName: 'Trial',
         isTrial: true,
         isValid: true,
-        expiresAt: trialCredit?.expiresAt || undefined
+        expiresAt: trialCredit?.expiresAt || undefined,
       };
     }
 
@@ -112,27 +129,29 @@ export async function checkSubscription(userId: string): Promise<SubscriptionDet
       remainingCredits: 0,
       totalCredits: 0,
       isTrial: false,
-      isValid: false
+      isValid: false,
     };
-
   } catch (error) {
     console.error('Error checking subscription:', error);
-    // FIX: Only one return for the catch block
     return {
       hasAccess: false,
       remainingCredits: 0,
       totalCredits: 0,
       isTrial: false,
-      isValid: false
+      isValid: false,
     };
   }
 }
 
-export async function useCredit(userId: string, action: string = 'GENERATION', amount: number = 1): Promise<{ success: boolean; remainingCredits: number; message?: string }> {
-  return await prisma.$transaction(async (tx) => {
-    // Get user's active credits (not expired and not used up)
+// Use credits for a given action (like GENERATION); decrements appropriately according to expiry/type ordering
+export async function useCredit(
+  userId: string,
+  action: string = 'GENERATION',
+  amount: number = 1
+): Promise<{ success: boolean; remainingCredits: number; message?: string }> {
+  return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const now = new Date();
-    const credits = await tx.credit.findMany({
+    const credits: Credit[] = await tx.credit.findMany({
       where: {
         userId,
         isActive: true,
@@ -142,39 +161,38 @@ export async function useCredit(userId: string, action: string = 'GENERATION', a
         ]
       },
       orderBy: [
-        { expiresAt: 'asc' }, // Use credits that expire soonest first
-        { type: 'asc' } // Use trial credits before subscription credits
+        { expiresAt: 'asc' },
+        { type: 'asc' }
       ]
     });
 
     // Calculate total available credits
-    const availableCredits = credits.reduce((sum, credit) => sum + (credit.amount - credit.used), 0);
-    
+    const availableCredits = credits.reduce(
+      (sum, credit) => sum + Math.max(credit.amount - credit.used, 0),
+      0
+    );
     if (availableCredits < amount) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         remainingCredits: availableCredits,
         message: 'Insufficient credits'
       };
     }
 
-    // Use credits starting from the first one
     let remainingAmount = amount;
-    
     for (const credit of credits) {
-      const availableInThisCredit = credit.amount - credit.used;
+      const availableInThisCredit = Math.max(credit.amount - credit.used, 0);
       const toUse = Math.min(remainingAmount, availableInThisCredit);
-      
+
       if (toUse > 0) {
         await tx.credit.update({
           where: { id: credit.id },
-          data: { 
+          data: {
             used: { increment: toUse },
             updatedAt: new Date()
           }
         });
 
-        // Record the usage
         await tx.usageRecord.create({
           data: {
             userId,
@@ -191,17 +209,18 @@ export async function useCredit(userId: string, action: string = 'GENERATION', a
       }
     }
 
-    return { 
-      success: true, 
+    return {
+      success: true,
       remainingCredits: availableCredits - amount
     };
   });
 }
 
+// Add credits of any type to a user (used for onboarding, purchases, bonuses, etc)
 export async function addCredits(
-  userId: string, 
-  type: CreditType, 
-  amount: number, 
+  userId: string,
+  type: CreditType,
+  amount: number,
   options: {
     description?: string;
     expiresAt?: Date;
@@ -219,14 +238,16 @@ export async function addCredits(
       expiresAt: options.expiresAt || null,
       isActive: true,
       subscriptionId: options.subscriptionId || null,
-      processId: options.processId || null
+      processId: options.processId || null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     }
   });
 }
 
+// Aggregate usage statistics for a user
 export async function getUsageStats(userId: string): Promise<UsageStats> {
-  const [credits, usage, subscription] = await Promise.all([
-    // Get all active credits
+  const [credits, usageAgg, subscription] = await Promise.all([
     prisma.credit.findMany({
       where: {
         userId,
@@ -237,15 +258,11 @@ export async function getUsageStats(userId: string): Promise<UsageStats> {
         ]
       }
     }),
-    
-    // Get usage statistics
     prisma.usageRecord.aggregate({
       where: { userId },
       _sum: { creditsUsed: true },
       _count: { _all: true }
     }),
-    
-    // Get active subscription if any
     prisma.userSubscription.findFirst({
       where: { 
         userId,
@@ -256,24 +273,26 @@ export async function getUsageStats(userId: string): Promise<UsageStats> {
     })
   ]);
 
-  // Calculate total credits
-  const totalCredits = credits.reduce((sum, credit) => sum + credit.amount, 0);
-  const usedCredits = credits.reduce((sum, credit) => sum + credit.used, 0);
+  // Compute detailed credit info
+  const totalCredits = credits.reduce((sum: number, credit: Credit) => sum + credit.amount, 0);
+  const usedCredits = credits.reduce((sum: number, credit: Credit) => sum + credit.used, 0);
   const remainingCredits = totalCredits - usedCredits;
 
   return {
-    totalCreditsUsed: usage._sum.creditsUsed || 0,
-    totalGenerations: usage._count._all || 0,
-    subscription: subscription ? {
-      planName: subscription.plan.displayName,
-      status: subscription.status,
-      periodEnd: subscription.currentPeriodEnd || undefined,
-      creditsIncluded: subscription.plan.creditsIncluded
-    } : null,
+    totalCreditsUsed: usageAgg._sum.creditsUsed ?? 0,
+    totalGenerations: usageAgg._count._all ?? 0,
+    subscription: subscription
+      ? {
+          planName: subscription.plan.displayName,
+          status: subscription.status,
+          periodEnd: subscription.currentPeriodEnd || undefined,
+          creditsIncluded: subscription.plan.creditsIncluded,
+        }
+      : null,
     credits: {
       total: totalCredits,
       used: usedCredits,
-      remaining: remainingCredits
-    }
+      remaining: remainingCredits,
+    },
   };
 }
